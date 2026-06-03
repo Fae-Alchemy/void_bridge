@@ -17,7 +17,7 @@ local function DetectEnvironment()
     if Config.Framework ~= "auto" then
         Framework = Config.Framework
     else
-        if GetResourceState('qb-core') == 'started' then
+        if GetResourceState('qb-core') == 'started' or GetResourceState('qbx_core') == 'started' then
             Framework = "qbcore"
         elseif GetResourceState('es_extended') == 'started' then
             Framework = "esx"
@@ -204,7 +204,7 @@ function Bridge.Target.AddBoxZone(id, coords, size, rotation, options)
                 canInteract = opt.canInteract
             })
         end
-        exports.ox_target:addBoxZone({
+        return exports.ox_target:addBoxZone({
             coords = coords,
             size = size,
             rotation = rotation,

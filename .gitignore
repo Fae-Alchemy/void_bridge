@@ -1,11 +1,6 @@
-# FiveM Resource folders to ignore (stored in their own repositories)
-resources/void_market/
-resources/void_shops/
-resources/void_prison/
-resources/void_blackmarket/
-resources/void_clothingbag/
-resources/void_garages/
-resources/void_keys/
+# Ignore all sub-resources (stored in their own repos)
+resources/
+
 
 # Node.js
 node_modules/
