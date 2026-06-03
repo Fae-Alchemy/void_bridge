@@ -33,4 +33,31 @@ CreateThread(function()
             print(("^5[void_test]^7 Cash adjusted for %s from $%d to $%d"):format(player.GetData().name, balanceBefore, balanceAfter))
         end
     end, false)
+
+    -- Auto-debug database structure on startup
+    CreateThread(function()
+        Wait(2000)
+        print("^5[void_test]^7 Querying player_vehicles structure...")
+        MySQL.query("DESCRIBE player_vehicles", {}, function(columns)
+            if columns then
+                print("^5[void_test]^7 Columns in player_vehicles:")
+                for _, col in ipairs(columns) do
+                    print(("- Column: %s, Type: %s"):format(col.Field, col.Type))
+                end
+            else
+                print("^1[void_test]^7 Failed to describe player_vehicles table.^7")
+            end
+        end)
+        
+        MySQL.query("SELECT * FROM player_vehicles LIMIT 10", {}, function(rows)
+            if rows then
+                print(("^5[void_test]^7 Found %d rows in player_vehicles:"):format(#rows))
+                for idx, row in ipairs(rows) do
+                    print(("- Row %d: citizenid=%s, plate=%s, vehicle=%s, state=%s, garage=%s, stored=%s"):format(idx, tostring(row.citizenid), tostring(row.plate), tostring(row.vehicle), tostring(row.state), tostring(row.garage), tostring(row.stored)))
+                end
+            else
+                print("^1[void_test]^7 Failed to query rows from player_vehicles table.^7")
+            end
+        end)
+    end)
 end)
