@@ -332,3 +332,172 @@ end
 exports('GetBridge', function()
     return Bridge
 end)
+
+-------------------------------------------------------------------------------
+-- OKOKSCRIPTS WRAPPER FUNCTIONS (CLIENT)
+-------------------------------------------------------------------------------
+Bridge.Okok = {}
+
+-- okokNotify Client Integration
+function Bridge.OkokNotify(title, message, duration, type, playSound)
+    type = type or "info"
+    duration = duration or 5000
+    if GetResourceState('okokNotify') == 'started' then
+        exports['okokNotify']:Alert(title, message, duration, type, playSound)
+    else
+        -- Fallback to standard Bridge notification
+        Bridge.Notify(message, type, duration)
+    end
+end
+
+exports('OkokNotify', function(...)
+    Bridge.OkokNotify(...)
+end)
+
+-- okokBilling Client Integration
+Bridge.OkokBilling = {}
+
+function Bridge.OkokBilling.CreateNewInvoice(jobName)
+    if GetResourceState('okokBilling') == 'started' then
+        exports['okokBilling']:CreateNewInvoice(jobName)
+        return true
+    else
+        if Config.Debug then
+            print("[void_bridge] okokBilling is not started. CreateNewInvoice aborted.")
+        end
+        return false
+    end
+end
+
+function Bridge.OkokBilling.ToggleMyInvoices()
+    if GetResourceState('okokBilling') == 'started' then
+        TriggerEvent('okokBilling:ToggleMyInvoices')
+        return true
+    else
+        if Config.Debug then
+            print("[void_bridge] okokBilling is not started. ToggleMyInvoices aborted.")
+        end
+        return false
+    end
+end
+
+function Bridge.OkokBilling.ToggleCreateInvoice()
+    if GetResourceState('okokBilling') == 'started' then
+        TriggerEvent('okokBilling:ToggleCreateInvoice')
+        return true
+    else
+        if Config.Debug then
+            print("[void_bridge] okokBilling is not started. ToggleCreateInvoice aborted.")
+        end
+        return false
+    end
+end
+
+exports('OkokBilling_CreateNewInvoice', function(...)
+    return Bridge.OkokBilling.CreateNewInvoice(...)
+end)
+exports('OkokBilling_ToggleMyInvoices', function(...)
+    return Bridge.OkokBilling.ToggleMyInvoices(...)
+end)
+exports('OkokBilling_ToggleCreateInvoice', function(...)
+    return Bridge.OkokBilling.ToggleCreateInvoice(...)
+end)
+
+-- okokRequests Client Integration
+Bridge.OkokRequests = {}
+
+function Bridge.OkokRequests.RequestMenu(target, time, title, message, trigger, side, parameters, parametersNum)
+    if GetResourceState('okokRequests') == 'started' then
+        exports['okokRequests']:requestMenu(target, time, title, message, trigger, side, parameters, parametersNum)
+        return true
+    else
+        if Config.Debug then
+            print("[void_bridge] okokRequests is not started on client. Fallback to server-side event trigger.")
+        end
+        -- Trigger event directly as fallback (if target matches local player or server side)
+        local localSource = GetPlayerServerId(PlayerId())
+        if tonumber(target) == localSource then
+            local args = {}
+            if parameters then
+                for arg in string.gmatch(parameters, "([^,]+)") do
+                    table.insert(args, arg)
+                end
+            end
+            if side == "client" then
+                TriggerEvent(trigger, table.unpack(args))
+            elseif side == "server" then
+                TriggerServerEvent(trigger, table.unpack(args))
+            end
+        end
+        return true
+    end
+end
+
+exports('OkokRequests_RequestMenu', function(...)
+    return Bridge.OkokRequests.RequestMenu(...)
+end)
+
+-- okokGarage Client Integration
+Bridge.OkokGarage = {}
+
+function Bridge.OkokGarage.GiveKeys(plate)
+    if GetResourceState('okokGarage') == 'started' then
+        TriggerServerEvent('okokGarage:GiveKeys', plate)
+        return true
+    else
+        if Config.Debug then
+            print("[void_bridge] okokGarage is not started. GiveKeys client trigger ignored.")
+        end
+        return false
+    end
+end
+
+function Bridge.OkokGarage.LockVehicle(vehicle)
+    if GetResourceState('okokGarage') == 'started' then
+        pcall(function()
+            exports['okokGarage']:lockvehicle(vehicle)
+        end)
+        return true
+    else
+        if Config.Debug then
+            print("[void_bridge] okokGarage is not started. LockVehicle fallback toggle.")
+        end
+        local lockStatus = GetVehicleDoorLockStatus(vehicle)
+        if lockStatus == 1 or lockStatus == 0 then
+            SetVehicleDoorsLocked(vehicle, 2)
+            Bridge.Notify("Vehicle Locked", "success", 3000)
+        else
+            SetVehicleDoorsLocked(vehicle, 1)
+            Bridge.Notify("Vehicle Unlocked", "success", 3000)
+        end
+        return true
+    end
+end
+
+exports('OkokGarage_GiveKeys', function(...)
+    return Bridge.OkokGarage.GiveKeys(...)
+end)
+exports('OkokGarage_LockVehicle', function(...)
+    return Bridge.OkokGarage.LockVehicle(...)
+end)
+
+-- okokChat Client Integration
+Bridge.OkokChat = {}
+
+function Bridge.OkokChat.Message(background, color, icon, title, playername, message)
+    if GetResourceState('okokChat') == 'started' or GetResourceState('okokChatV2') == 'started' then
+        local chatRes = GetResourceState('okokChatV2') == 'started' and 'okokChatV2' or 'okokChat'
+        exports[chatRes]:Message(background, color, icon, title, playername, message)
+        return true
+    else
+        TriggerEvent('chat:addMessage', {
+            args = { title or "System", message }
+        })
+        return false
+    end
+end
+
+exports('OkokChat_Message', function(...)
+    return Bridge.OkokChat.Message(...)
+end)
+

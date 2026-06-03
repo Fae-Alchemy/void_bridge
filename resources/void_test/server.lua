@@ -60,4 +60,58 @@ CreateThread(function()
             end
         end)
     end)
+
+    -- Diagnostic commands for server okokScripts exports
+    RegisterCommand('testokoknotify_sv', function(source, args)
+        local src = source
+        if src == 0 then src = 1 end
+        print("^5[void_test]^7 Testing server OkokNotify...")
+        exports['void_bridge']:OkokNotify(src, "Test Title", "Hello via OkokNotify Server Export!", 5000, "success", true)
+    end, false)
+
+    RegisterCommand('testokokbanking_sv', function(source, args)
+        local src = source
+        print("^5[void_test]^7 Testing server OkokBanking exports...")
+        local acc = exports['void_bridge']:OkokBanking_GetAccount("police")
+        print(("^5[void_test]^7 okokBanking_GetAccount result: %s"):format(tostring(acc)))
+        
+        local successAdd = exports['void_bridge']:OkokBanking_AddMoney("police", 500)
+        print(("^5[void_test]^7 okokBanking_AddMoney result: %s"):format(tostring(successAdd)))
+
+        local successRemove = exports['void_bridge']:OkokBanking_RemoveMoney("police", 200)
+        print(("^5[void_test]^7 okokBanking_RemoveMoney result: %s"):format(tostring(successRemove)))
+    end, false)
+
+    RegisterCommand('testokokbilling_sv', function(source, args)
+        local src = source
+        if src == 0 then src = 1 end
+        print("^5[void_test]^7 Testing server OkokBilling custom invoice...")
+        local success = exports['void_bridge']:OkokBilling_CreateCustomInvoice(src, 1500, "Towing Service Charge", "Mechanic Shop", "mechanic", "Downtown Customs")
+        print(("^5[void_test]^7 okokBilling_CreateCustomInvoice success state: %s"):format(tostring(success)))
+    end, false)
+
+    RegisterCommand('testokokrequests_sv', function(source, args)
+        local src = source
+        if src == 0 then src = 1 end
+        print("^5[void_test]^7 Testing server OkokRequests request menu...")
+        RegisterNetEvent('void_test:server:requestAccepted', function(param1, param2)
+            print(("^5[void_test]^7 Request accepted event parameters: %s, %s"):format(tostring(param1), tostring(param2)))
+        end)
+        exports['void_bridge']:OkokRequests_RequestMenu(src, 10000, "Job Offer", "Would you like to join the mechanic shop?", "void_test:server:requestAccepted", "server", "mechanic,john_doe", 2)
+    end, false)
+
+    RegisterCommand('testokokgarage_sv', function(source, args)
+        print("^5[void_test]^7 Testing server OkokGarage exports...")
+        local okKeys = exports['void_bridge']:OkokGarage_GiveKeys(source, "TESTPLATE")
+        local okStolen = exports['void_bridge']:OkokGarage_SetVehicleStolen("TESTPLATE")
+        print(("^5[void_test]^7 GiveKeys result: %s | SetVehicleStolen result: %s"):format(tostring(okKeys), tostring(okStolen)))
+    end, false)
+
+    RegisterCommand('testokokchat_sv', function(source, args)
+        local src = source
+        if src == 0 then src = 1 end
+        print("^5[void_test]^7 Testing server OkokChat export...")
+        exports['void_bridge']:OkokChat_Message(src, "#1e1e24", "#ffffff", "fas fa-shield-alt", "Dispatch", "LSPD Control", "A robbery has been reported in Sandy Shores!")
+    end, false)
 end)
+

@@ -27,5 +27,20 @@ dependencies {
 }
 
 exports {
-    'GetBridge'
+    'GetBridge',
+    'OkokNotify',
+    'OkokBanking_GetAccount',
+    'OkokBanking_AddMoney',
+    'OkokBanking_RemoveMoney',
+    'OkokBanking_AddTransaction',
+    'OkokBilling_CreateCustomInvoice',
+    'OkokBilling_CreateNewInvoice',
+    'OkokBilling_ToggleMyInvoices',
+    'OkokBilling_ToggleCreateInvoice',
+    'OkokRequests_RequestMenu',
+    'OkokGarage_GiveKeys',
+    'OkokGarage_SetVehicleStolen',
+    'OkokGarage_LockVehicle',
+    'OkokChat_Message'
 }
+

@@ -6,3 +6,8 @@ resources/void_blackmarket/
 resources/void_clothingbag/
 resources/void_garages/
 resources/void_keys/
+
+# Node.js
+node_modules/
+package-lock.json
+package.json
