@@ -114,6 +114,47 @@ local function DetectEnvironment()
     end
 end
 
+-- Version Checker
+local function CheckVersion()
+    local currentVersion = GetResourceMetadata(GetCurrentResourceName(), 'version', 0)
+    if not currentVersion then
+        if Config.Debug then
+            print("[void_bridge] Version metadata not found in fxmanifest.lua.")
+        end
+        return
+    end
+
+    PerformHttpRequest('https://raw.githubusercontent.com/Fae-Alchemy/void_bridge/master/fxmanifest.lua', function(statusCode, response, headers)
+        if statusCode ~= 200 or not response then
+            if Config.Debug then
+                print("[void_bridge] Failed to fetch latest version from GitHub.")
+            end
+            return
+        end
+
+        -- Parse version from response
+        local latestVersion = response:match("version%s+['\"]([%d%.]+)['\"]")
+        if not latestVersion then
+            if Config.Debug then
+                print("[void_bridge] Could not parse version from GitHub response.")
+            end
+            return
+        end
+
+        if currentVersion ~= latestVersion then
+            print("^4===========================================================^7")
+            print(("^4[void_bridge]^7 Update Available! Local: ^1v%s^7 | Latest: ^2v%s^7"):format(currentVersion, latestVersion))
+            print("^4[void_bridge]^7 Please download the latest version from:")
+            print("^4[void_bridge]^7 https://github.com/Fae-Alchemy/void_bridge/releases")
+            print("^4===========================================================^7")
+        else
+            if Config.Debug then
+                print(("^4[void_bridge]^7 Version check: up to date (v" .. currentVersion .. ")"))
+            end
+        end
+    end, 'GET')
+end
+
 -- Initialize detection on resource start
 AddEventHandler('onResourceStart', function(resourceName)
     if GetCurrentResourceName() ~= resourceName then return end
@@ -124,6 +165,8 @@ end)
 CreateThread(function()
     Wait(100)
     DetectEnvironment()
+    Wait(5000) -- Wait 5 seconds after startup to not clutter console
+    CheckVersion()
 end)
 
 -------------------------------------------------------------------------------
