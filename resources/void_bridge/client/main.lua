@@ -368,6 +368,15 @@ function Bridge.Target.RemoveTargetEntity(entity)
     end
 end
 
+function Bridge.Target.RemoveZone(zone)
+    if TargetSystem == "ox_target" then
+        exports.ox_target:removeZone(zone)
+    elseif TargetSystem == "qb-target" or TargetSystem == "qtarget" then
+        local targetName = TargetSystem == "qb-target" and "qb-target" or "qtarget"
+        exports[targetName]:RemoveZone(zone)
+    end
+end
+
 -- Export implementation to retrieve the bridge object
 exports('GetBridge', function()
     return Bridge
