@@ -3,7 +3,8 @@ game 'gta5'
 
 author 'Fae_Alchemy'
 description 'A lightweight, framework-agnostic bridge for custom scripts'
-version '1.0.1'
+version '1.1.0'
+
 
 shared_scripts {
     '@ox_lib/init.lua',
