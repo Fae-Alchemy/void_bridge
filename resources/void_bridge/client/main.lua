@@ -11,17 +11,22 @@ local LibSystemName = "none"
 
 local LocalPlayerData = {}
 
+local function IsResourceActive(name)
+    local state = GetResourceState(name)
+    return state == "started" or state == "starting"
+end
+
 -- Dynamic Environment Auto-Detection
 local function DetectEnvironment()
     -- 1. Detect Core Framework
     if Config.Framework ~= "auto" then
         Framework = Config.Framework
     else
-        if GetResourceState('qbx_core') == 'started' then
+        if IsResourceActive('qbx_core') then
             Framework = "qbx"
-        elseif GetResourceState('qb-core') == 'started' then
+        elseif IsResourceActive('qb-core') then
             Framework = "qbcore"
-        elseif GetResourceState('es_extended') == 'started' then
+        elseif IsResourceActive('es_extended') then
             Framework = "esx"
         else
             Framework = "standalone"
@@ -41,11 +46,11 @@ local function DetectEnvironment()
     if Config.Target ~= "auto" then
         TargetSystem = Config.Target
     else
-        if GetResourceState('ox_target') == 'started' then
+        if IsResourceActive('ox_target') then
             TargetSystem = "ox_target"
-        elseif GetResourceState('qb-target') == 'started' then
+        elseif IsResourceActive('qb-target') then
             TargetSystem = "qb-target"
-        elseif GetResourceState('qtarget') == 'started' then
+        elseif IsResourceActive('qtarget') then
             TargetSystem = "qtarget"
         else
             TargetSystem = "none"
@@ -56,11 +61,11 @@ local function DetectEnvironment()
     if Config.Notify ~= "auto" then
         NotifySystemName = Config.Notify
     else
-        if GetResourceState('ox_lib') == 'started' then
-            NotifySystemName = "ox_lib"
-        elseif GetResourceState('okokNotify') == 'started' then
+        if IsResourceActive('okokNotify') then
             NotifySystemName = "okokNotify"
-        elseif Framework == "qbcore" then
+        elseif IsResourceActive('ox_lib') then
+            NotifySystemName = "ox_lib"
+        elseif Framework == "qbcore" or Framework == "qbx" then
             NotifySystemName = "qbcore"
         elseif Framework == "esx" then
             NotifySystemName = "esx"
@@ -73,7 +78,7 @@ local function DetectEnvironment()
     if Config.Lib ~= "auto" then
         LibSystemName = Config.Lib
     else
-        if GetResourceState('ox_lib') == 'started' then
+        if IsResourceActive('ox_lib') then
             LibSystemName = "ox_lib"
         else
             LibSystemName = "none"

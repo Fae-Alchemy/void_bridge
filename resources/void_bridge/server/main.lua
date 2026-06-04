@@ -15,17 +15,22 @@ local GarageSystemName = "standalone"
 local DispatchSystemName = "standalone"
 
 
+local function IsResourceActive(name)
+    local state = GetResourceState(name)
+    return state == "started" or state == "starting"
+end
+
 -- Dynamic Framework and Dependency Auto-Detection
 local function DetectEnvironment()
     -- 1. Detect Core Framework
     if Config.Framework ~= "auto" then
         Framework = Config.Framework
     else
-        if GetResourceState('qbx_core') == 'started' then
+        if IsResourceActive('qbx_core') then
             Framework = "qbx"
-        elseif GetResourceState('qb-core') == 'started' then
+        elseif IsResourceActive('qb-core') then
             Framework = "qbcore"
-        elseif GetResourceState('es_extended') == 'started' then
+        elseif IsResourceActive('es_extended') then
             Framework = "esx"
         else
             Framework = "standalone"
@@ -45,11 +50,11 @@ local function DetectEnvironment()
     if Config.Inventory ~= "auto" then
         InventorySystem = Config.Inventory
     else
-        if GetResourceState('ox_inventory') == 'started' then
+        if IsResourceActive('ox_inventory') then
             InventorySystem = "ox_inventory"
-        elseif GetResourceState('qb-inventory') == 'started' or GetResourceState('qb-core') == 'started' or GetResourceState('qbx_core') == 'started' then
+        elseif IsResourceActive('qb-inventory') or IsResourceActive('qb-core') or IsResourceActive('qbx_core') then
             InventorySystem = "qb-inventory"
-        elseif GetResourceState('qs-inventory') == 'started' then
+        elseif IsResourceActive('qs-inventory') then
             InventorySystem = "qs-inventory"
         else
             InventorySystem = "standalone"
@@ -60,10 +65,10 @@ local function DetectEnvironment()
     if Config.Notify ~= "auto" then
         NotifySystemName = Config.Notify
     else
-        if GetResourceState('ox_lib') == 'started' then
-            NotifySystemName = "ox_lib"
-        elseif GetResourceState('okokNotify') == 'started' then
+        if IsResourceActive('okokNotify') then
             NotifySystemName = "okokNotify"
+        elseif IsResourceActive('ox_lib') then
+            NotifySystemName = "ox_lib"
         elseif Framework == "qbcore" or Framework == "qbx" then
             NotifySystemName = "qbcore"
         elseif Framework == "esx" then
@@ -77,10 +82,10 @@ local function DetectEnvironment()
     if Config.Banking ~= "auto" then
         BankingSystemName = Config.Banking
     else
-        if GetResourceState('pefcl') == 'started' then
-            BankingSystemName = "pefcl"
-        elseif GetResourceState('okokBanking') == 'started' then
+        if IsResourceActive('okokBanking') then
             BankingSystemName = "okokBanking"
+        elseif IsResourceActive('pefcl') then
+            BankingSystemName = "pefcl"
         elseif Framework == "qbcore" or Framework == "qbx" then
             BankingSystemName = "qbcore"
         elseif Framework == "esx" then
@@ -94,15 +99,15 @@ local function DetectEnvironment()
     if Config.Garage ~= "auto" then
         GarageSystemName = Config.Garage
     else
-        if GetResourceState('void_garages') == 'started' then
+        if IsResourceActive('void_garages') then
             GarageSystemName = "void_garages"
-        elseif GetResourceState('jg-advancedgarage') == 'started' then
+        elseif IsResourceActive('jg-advancedgarage') then
             GarageSystemName = "jg-advancedgarage"
-        elseif GetResourceState('qs-advancedgarages') == 'started' then
+        elseif IsResourceActive('qs-advancedgarages') then
             GarageSystemName = "qs-advancedgarages"
-        elseif GetResourceState('qb-garage') == 'started' then
+        elseif IsResourceActive('qb-garage') then
             GarageSystemName = "qb-garage"
-        elseif GetResourceState('esx_garage') == 'started' then
+        elseif IsResourceActive('esx_garage') then
             GarageSystemName = "esx_garage"
         else
             GarageSystemName = "standalone"
@@ -113,11 +118,11 @@ local function DetectEnvironment()
     if Config.Dispatch ~= "auto" then
         DispatchSystemName = Config.Dispatch
     else
-        if GetResourceState('ps-dispatch') == 'started' then
+        if IsResourceActive('ps-dispatch') then
             DispatchSystemName = "ps-dispatch"
-        elseif GetResourceState('qb-dispatch') == 'started' then
+        elseif IsResourceActive('qb-dispatch') then
             DispatchSystemName = "qb-dispatch"
-        elseif GetResourceState('cd_dispatch') == 'started' then
+        elseif IsResourceActive('cd_dispatch') then
             DispatchSystemName = "cd_dispatch"
         else
             DispatchSystemName = "standalone"

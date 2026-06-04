@@ -3,7 +3,7 @@ game 'gta5'
 
 author 'Fae_Alchemy'
 description 'A lightweight, framework-agnostic bridge for custom scripts'
-version '1.1.1'
+version '1.1.2'
 
 
 shared_scripts {
