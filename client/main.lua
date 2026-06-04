@@ -501,3 +501,51 @@ exports('OkokChat_Message', function(...)
     return Bridge.OkokChat.Message(...)
 end)
 
+-------------------------------------------------------------------------------
+-- STANDALONE DISPATCH SYSTEM FALLBACK (CLIENT)
+-------------------------------------------------------------------------------
+local fallbackBlip = nil
+
+RegisterNetEvent('void_bridge:client:dispatchAlert', function(data)
+    local pData = Bridge.GetPlayerData()
+    if not pData or not pData.job or not pData.job.name then return end
+
+    -- Check if player's job is in target dispatch jobs
+    local hasJob = false
+    for _, job in ipairs(data.jobs) do
+        if pData.job.name == job then
+            hasJob = true
+            break
+        end
+    end
+
+    if not hasJob then return end
+
+    -- Play warning sound
+    PlaySoundFrontend(-1, "LEADER_BOARD", "HUD_FRONTEND_DEFAULT_SOUNDSET", 1)
+
+    -- Display alert message
+    Bridge.Notify(("[%s] %s - %s"):format(data.code, data.title, data.description), "warning", 8000)
+
+    -- Add blip
+    if fallbackBlip then RemoveBlip(fallbackBlip) end
+    fallbackBlip = AddBlipForCoord(data.coords.x, data.coords.y, data.coords.z)
+    SetBlipSprite(fallbackBlip, data.sprite or 161)
+    SetBlipScale(fallbackBlip, data.scale or 1.0)
+    SetBlipColor(fallbackBlip, data.color or 1)
+    SetBlipRoute(fallbackBlip, true)
+    BeginTextCommandSetBlipName("STRING")
+    AddTextComponentString(data.title)
+    EndTextCommandSetBlipName(fallbackBlip)
+
+    -- Remove blip after 2 minutes
+    CreateThread(function()
+        Wait(120000)
+        if fallbackBlip then
+            RemoveBlip(fallbackBlip)
+            fallbackBlip = nil
+        end
+    end)
+end)
+
+

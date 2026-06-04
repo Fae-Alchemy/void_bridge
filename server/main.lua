@@ -12,6 +12,8 @@ local InventorySystem = "standalone"
 local NotifySystemName = "standalone"
 local BankingSystemName = "standalone"
 local GarageSystemName = "standalone"
+local DispatchSystemName = "standalone"
+
 
 -- Dynamic Framework and Dependency Auto-Detection
 local function DetectEnvironment()
@@ -103,6 +105,21 @@ local function DetectEnvironment()
         end
     end
 
+    -- 6. Detect Dispatch System
+    if Config.Dispatch ~= "auto" then
+        DispatchSystemName = Config.Dispatch
+    else
+        if GetResourceState('ps-dispatch') == 'started' then
+            DispatchSystemName = "ps-dispatch"
+        elseif GetResourceState('qb-dispatch') == 'started' then
+            DispatchSystemName = "qb-dispatch"
+        elseif GetResourceState('cd_dispatch') == 'started' then
+            DispatchSystemName = "cd_dispatch"
+        else
+            DispatchSystemName = "standalone"
+        end
+    end
+
     if Config.Debug then
         print("^4================= VOID_BRIDGE ENVIRONMENT =================^7")
         print(("^4[void_bridge]^7 Framework: ^2%s^7"):format(Framework))
@@ -110,6 +127,7 @@ local function DetectEnvironment()
         print(("^4[void_bridge]^7 Notification: ^2%s^7"):format(NotifySystemName))
         print(("^4[void_bridge]^7 Banking: ^2%s^7"):format(BankingSystemName))
         print(("^4[void_bridge]^7 Garage: ^2%s^7"):format(GarageSystemName))
+        print(("^4[void_bridge]^7 Dispatch: ^2%s^7"):format(DispatchSystemName))
         print("^4===========================================================^7")
     end
 end
@@ -639,8 +657,94 @@ exports('OkokChat_Message', function(...)
     return Bridge.OkokChat.Message(...)
 end)
 
+-------------------------------------------------------------------------------
+-- DISPATCH WRAPPER FUNCTIONS (SERVER)
+-------------------------------------------------------------------------------
+Bridge.Dispatch = {}
+
+function Bridge.Dispatch.GetSystem()
+    return DispatchSystemName
+end
+
+function Bridge.Dispatch.Alert(source, data)
+    if not data then return end
+    local coords = data.coords or (source and GetEntityCoords(GetPlayerPed(source)) or vector3(0.0, 0.0, 0.0))
+    local title = data.title or "Robbery in progress"
+    local description = data.description or "Robbery alarm triggered"
+    local code = data.code or "10-90"
+    local sprite = data.sprite or 161
+    local color = data.color or 1
+    local scale = data.scale or 1.0
+    local jobs = data.jobs or { "police" }
+
+    if DispatchSystemName == "ps-dispatch" then
+        exports['ps-dispatch']:CustomAlert({
+            coords = coords,
+            message = description,
+            dispatchCode = code,
+            description = description,
+            priority = 2,
+            playKeepAliveSound = true,
+            alert = {
+                title = title,
+                coords = coords,
+                sprite = sprite,
+                color = color,
+                scale = scale,
+                flash = true
+            },
+            jobs = jobs
+        })
+    elseif DispatchSystemName == "qb-dispatch" then
+        TriggerEvent('qb-dispatch:server:CreateDispatchCall', {
+            code = code,
+            description = description,
+            radius = 0,
+            sprite = sprite,
+            color = color,
+            scale = scale,
+            coords = coords,
+            job = jobs
+        })
+    elseif DispatchSystemName == "cd_dispatch" then
+        TriggerEvent('cd_dispatch:AddNotification', {
+            job_table = jobs,
+            coords = coords,
+            title = title,
+            message = description,
+            flash = 1,
+            unique_id = tostring(math.random(10000, 99999)),
+            blip = {
+                sprite = sprite,
+                color = color,
+                scale = scale,
+                text = title,
+                time = 60,
+                flash = true
+            }
+        })
+    else
+        -- Standalone / Fallback to all online players with target jobs
+        TriggerClientEvent('void_bridge:client:dispatchAlert', -1, {
+            coords = coords,
+            title = title,
+            description = description,
+            code = code,
+            sprite = sprite,
+            color = color,
+            scale = scale,
+            jobs = jobs
+        })
+    end
+end
+
+exports('AlertPolice', function(source, data)
+    return Bridge.Dispatch.Alert(source, data)
+end)
+
 -- Export implementation to retrieve the bridge object
 exports('GetBridge', function()
     return Bridge
 end)
+
 

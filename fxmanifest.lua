@@ -41,6 +41,8 @@ exports {
     'OkokGarage_GiveKeys',
     'OkokGarage_SetVehicleStolen',
     'OkokGarage_LockVehicle',
-    'OkokChat_Message'
+    'OkokChat_Message',
+    'AlertPolice'
 }
+
 

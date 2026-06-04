@@ -31,5 +31,9 @@ Config.Garage = "auto"
 -- Toggles: "auto", "ox_lib", "none"
 Config.Lib = "auto"
 
+-- Dispatch/Alert System Configuration
+-- Toggles: "auto", "ps-dispatch", "qb-dispatch", "cd_dispatch", "standalone"
+Config.Dispatch = "auto"
+
 -- Default settings for notifications (used if fallback to standalone is active)
 Config.DefaultNotificationDuration = 5000 -- ms
