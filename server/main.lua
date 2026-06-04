@@ -264,6 +264,7 @@ function Bridge.Inventory.GetSystem()
 end
 
 function Bridge.Inventory.AddItem(source, item, count, metadata)
+    source = tonumber(source) or source
     count = tonumber(count) or 1
     if InventorySystem == "ox_inventory" then
         return exports.ox_inventory:AddItem(source, item, count, metadata)
@@ -279,6 +280,7 @@ function Bridge.Inventory.AddItem(source, item, count, metadata)
 end
 
 function Bridge.Inventory.RemoveItem(source, item, count, metadata)
+    source = tonumber(source) or source
     count = tonumber(count) or 1
     if InventorySystem == "ox_inventory" then
         return exports.ox_inventory:RemoveItem(source, item, count, metadata)
@@ -294,6 +296,7 @@ function Bridge.Inventory.RemoveItem(source, item, count, metadata)
 end
 
 function Bridge.Inventory.HasItem(source, item, count)
+    source = tonumber(source) or source
     count = tonumber(count) or 1
     if InventorySystem == "ox_inventory" then
         local itemCount = exports.ox_inventory:Search(source, 'count', item)
