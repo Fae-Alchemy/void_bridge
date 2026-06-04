@@ -21,7 +21,9 @@ local function DetectEnvironment()
     if Config.Framework ~= "auto" then
         Framework = Config.Framework
     else
-        if GetResourceState('qb-core') == 'started' or GetResourceState('qbx_core') == 'started' then
+        if GetResourceState('qbx_core') == 'started' then
+            Framework = "qbx"
+        elseif GetResourceState('qb-core') == 'started' then
             Framework = "qbcore"
         elseif GetResourceState('es_extended') == 'started' then
             Framework = "esx"
@@ -45,7 +47,7 @@ local function DetectEnvironment()
     else
         if GetResourceState('ox_inventory') == 'started' then
             InventorySystem = "ox_inventory"
-        elseif GetResourceState('qb-inventory') == 'started' or GetResourceState('qb-core') == 'started' then
+        elseif GetResourceState('qb-inventory') == 'started' or GetResourceState('qb-core') == 'started' or GetResourceState('qbx_core') == 'started' then
             InventorySystem = "qb-inventory"
         elseif GetResourceState('qs-inventory') == 'started' then
             InventorySystem = "qs-inventory"
@@ -62,7 +64,7 @@ local function DetectEnvironment()
             NotifySystemName = "ox_lib"
         elseif GetResourceState('okokNotify') == 'started' then
             NotifySystemName = "okokNotify"
-        elseif Framework == "qbcore" then
+        elseif Framework == "qbcore" or Framework == "qbx" then
             NotifySystemName = "qbcore"
         elseif Framework == "esx" then
             NotifySystemName = "esx"
@@ -77,9 +79,9 @@ local function DetectEnvironment()
     else
         if GetResourceState('pefcl') == 'started' then
             BankingSystemName = "pefcl"
-        elseif GetResourceState('okBanking') == 'started' then
-            BankingSystemName = "okBanking"
-        elseif Framework == "qbcore" then
+        elseif GetResourceState('okokBanking') == 'started' then
+            BankingSystemName = "okokBanking"
+        elseif Framework == "qbcore" or Framework == "qbx" then
             BankingSystemName = "qbcore"
         elseif Framework == "esx" then
             BankingSystemName = "esx"
@@ -92,7 +94,9 @@ local function DetectEnvironment()
     if Config.Garage ~= "auto" then
         GarageSystemName = Config.Garage
     else
-        if GetResourceState('jg-advancedgarage') == 'started' then
+        if GetResourceState('void_garages') == 'started' then
+            GarageSystemName = "void_garages"
+        elseif GetResourceState('jg-advancedgarage') == 'started' then
             GarageSystemName = "jg-advancedgarage"
         elseif GetResourceState('qs-advancedgarages') == 'started' then
             GarageSystemName = "qs-advancedgarages"
@@ -200,6 +204,8 @@ end
 function Bridge.GetPlayers()
     if Framework == "qbcore" then
         return QBCore.Functions.GetPlayers()
+    elseif Framework == "qbx" then
+        return GetPlayers()
     elseif Framework == "esx" then
         return ESX.GetPlayers()
     else
@@ -222,6 +228,10 @@ function Bridge.Notify(source, message, type, duration)
         TriggerClientEvent('okokNotify:Alert', source, "System", message, duration, type)
     elseif NotifySystemName == "qbcore" and Framework == "qbcore" then
         TriggerClientEvent('QBCore:Notify', source, message, type, duration)
+    elseif NotifySystemName == "qbcore" and Framework == "qbx" then
+        pcall(function()
+            exports.qbx_core:Notify(source, message, type, duration)
+        end)
     elseif NotifySystemName == "esx" and Framework == "esx" then
         TriggerClientEvent('esx:showNotification', source, message, type, duration)
     else
@@ -236,6 +246,13 @@ end
 function Bridge.HasPermission(source, permission)
     if Framework == "qbcore" then
         return QBCore.Functions.HasPermission(source, permission)
+    elseif Framework == "qbx" then
+        local hasPerm = false
+        pcall(function()
+            hasPerm = exports.qbx_core:HasPermission(source, permission)
+        end)
+        if hasPerm then return true end
+        return IsPlayerAceAllowed(source, "command." .. permission) or IsPlayerAceAllowed(source, permission)
     elseif Framework == "esx" then
         local xPlayer = ESX.GetPlayerFromId(source)
         if xPlayer then
@@ -268,10 +285,17 @@ function Bridge.Inventory.AddItem(source, item, count, metadata)
     count = tonumber(count) or 1
     if InventorySystem == "ox_inventory" then
         return exports.ox_inventory:AddItem(source, item, count, metadata)
-    elseif InventorySystem == "qb-inventory" and Framework == "qbcore" then
-        local Player = QBCore.Functions.GetPlayer(source)
-        if Player then
-            return Player.Functions.AddItem(item, count, false, metadata)
+    elseif InventorySystem == "qb-inventory" then
+        if Framework == "qbcore" then
+            local Player = QBCore.Functions.GetPlayer(source)
+            if Player then
+                return Player.Functions.AddItem(item, count, false, metadata)
+            end
+        elseif Framework == "qbx" then
+            local Player = exports.qbx_core:GetPlayer(source)
+            if Player then
+                return Player.Functions.AddItem(item, count, false, metadata)
+            end
         end
     elseif InventorySystem == "qs-inventory" then
         return exports['qs-inventory']:AddItem(source, item, count, metadata)
@@ -284,10 +308,17 @@ function Bridge.Inventory.RemoveItem(source, item, count, metadata)
     count = tonumber(count) or 1
     if InventorySystem == "ox_inventory" then
         return exports.ox_inventory:RemoveItem(source, item, count, metadata)
-    elseif InventorySystem == "qb-inventory" and Framework == "qbcore" then
-        local Player = QBCore.Functions.GetPlayer(source)
-        if Player then
-            return Player.Functions.RemoveItem(item, count, false)
+    elseif InventorySystem == "qb-inventory" then
+        if Framework == "qbcore" then
+            local Player = QBCore.Functions.GetPlayer(source)
+            if Player then
+                return Player.Functions.RemoveItem(item, count, false)
+            end
+        elseif Framework == "qbx" then
+            local Player = exports.qbx_core:GetPlayer(source)
+            if Player then
+                return Player.Functions.RemoveItem(item, count, false)
+            end
         end
     elseif InventorySystem == "qs-inventory" then
         return exports['qs-inventory']:RemoveItem(source, item, count)
@@ -301,11 +332,19 @@ function Bridge.Inventory.HasItem(source, item, count)
     if InventorySystem == "ox_inventory" then
         local itemCount = exports.ox_inventory:Search(source, 'count', item)
         return itemCount >= count
-    elseif InventorySystem == "qb-inventory" and Framework == "qbcore" then
-        local Player = QBCore.Functions.GetPlayer(source)
-        if Player then
-            local itemData = Player.Functions.GetItemByName(item)
-            return itemData and itemData.amount >= count
+    elseif InventorySystem == "qb-inventory" then
+        if Framework == "qbcore" then
+            local Player = QBCore.Functions.GetPlayer(source)
+            if Player then
+                local itemData = Player.Functions.GetItemByName(item)
+                return itemData and itemData.amount >= count
+            end
+        elseif Framework == "qbx" then
+            local Player = exports.qbx_core:GetPlayer(source)
+            if Player then
+                local itemData = Player.Functions.GetItemByName(item)
+                return itemData and itemData.amount >= count
+            end
         end
     elseif InventorySystem == "qs-inventory" then
         local quantity = exports['qs-inventory']:GetItemTotalAmount(source, item)
@@ -363,7 +402,7 @@ function Bridge.Garage.GetPlayerVehicles(source)
     local promise = promise.new()
 
     -- Standard QB-Core vehicle query (compatible with qb-garage, jg-advancedgarage, qs-advancedgarages on QB)
-    if fw == "qbcore" then
+    if fw == "qbcore" or fw == "qbx" then
         MySQL.query('SELECT plate, vehicle, state, hash FROM player_vehicles WHERE citizenid = ?', {citizenid}, function(results)
             local list = {}
             if results then
@@ -425,7 +464,7 @@ function Bridge.Garage.IsVehicleOwner(source, plate)
     local plateNormalized = string.gsub(plate, "%s+", ""):upper()
     local promise = promise.new()
 
-    if fw == "qbcore" then
+    if fw == "qbcore" or fw == "qbx" then
         MySQL.single('SELECT citizenid FROM player_vehicles WHERE TRIM(plate) = ?', {plateNormalized}, function(result)
             if result then
                 promise:resolve(result.citizenid == citizenid)

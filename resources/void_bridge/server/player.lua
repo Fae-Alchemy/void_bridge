@@ -172,6 +172,63 @@ function Bridge.GetPlayer(source)
 
         return self
 
+    elseif fw == "qbx" then
+        local qbxPlayer = exports.qbx_core:GetPlayer(source)
+        if not qbxPlayer then return nil end
+
+        local self = {}
+        
+        function self.GetData()
+            return {
+                source = qbxPlayer.PlayerData.source,
+                citizenid = qbxPlayer.PlayerData.citizenid,
+                identifier = qbxPlayer.PlayerData.license,
+                name = qbxPlayer.PlayerData.charinfo.firstname .. " " .. qbxPlayer.PlayerData.charinfo.lastname,
+                job = {
+                    name = qbxPlayer.PlayerData.job.name,
+                    label = qbxPlayer.PlayerData.job.label,
+                    grade = qbxPlayer.PlayerData.job.grade.level,
+                    gradeLabel = qbxPlayer.PlayerData.job.grade.name
+                },
+                gang = qbxPlayer.PlayerData.gang and {
+                    name = qbxPlayer.PlayerData.gang.name,
+                    label = qbxPlayer.PlayerData.gang.label,
+                    grade = qbxPlayer.PlayerData.gang.grade.level,
+                    gradeLabel = qbxPlayer.PlayerData.gang.grade.name,
+                    isboss = qbxPlayer.PlayerData.gang.isboss
+                } or nil
+            }
+        end
+
+        function self.GetMoney(account)
+            account = account == "cash" and "cash" or "bank"
+            return qbxPlayer.Functions.GetMoney(account) or 0
+        end
+
+        function self.AddMoney(account, amount, reason)
+            account = account == "cash" and "cash" or "bank"
+            return qbxPlayer.Functions.AddMoney(account, amount, reason)
+        end
+
+        function self.RemoveMoney(account, amount, reason)
+            account = account == "cash" and "cash" or "bank"
+            return qbxPlayer.Functions.RemoveMoney(account, amount, reason)
+        end
+
+        function self.SetJob(jobName, grade)
+            return qbxPlayer.Functions.SetJob(jobName, grade)
+        end
+
+        function self.GetMetaData(key)
+            return qbxPlayer.Functions.GetMetaData(key)
+        end
+
+        function self.SetMetaData(key, val)
+            qbxPlayer.Functions.SetMetaData(key, val)
+        end
+
+        return self
+
     elseif fw == "esx" then
         local ESX = nil
         pcall(function() ESX = exports['es_extended']:getSharedObject() end)
@@ -270,6 +327,11 @@ function Bridge.GetPlayerByCitizenId(citizenid)
         local qbPlayer = QBCore.Functions.GetPlayerByCitizenId(citizenid)
         if qbPlayer then
             return Bridge.GetPlayer(qbPlayer.PlayerData.source)
+        end
+    elseif fw == "qbx" then
+        local qbxPlayer = exports.qbx_core:GetPlayerByCitizenId(citizenid)
+        if qbxPlayer then
+            return Bridge.GetPlayer(qbxPlayer.PlayerData.source)
         end
     elseif fw == "esx" then
         local ESX = nil

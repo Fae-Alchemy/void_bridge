@@ -4,7 +4,7 @@ Config = {}
 Config.Debug = true
 
 -- Main Server Framework Configuration
--- Toggles: "auto" (auto-detects started framework), "qbcore", "esx", "standalone"
+-- Toggles: "auto" (auto-detects started framework), "qbcore", "qbx", "esx", "standalone"
 Config.Framework = "auto"
 
 -- Inventory Configuration
@@ -20,11 +20,11 @@ Config.Target = "auto"
 Config.Notify = "auto"
 
 -- Banking Resource
--- Toggles: "auto", "qb-banking", "pefcl", "okBanking", "esx", "qbcore", "standalone"
+-- Toggles: "auto", "qb-banking", "pefcl", "okokBanking", "esx", "qbcore", "standalone"
 Config.Banking = "auto"
 
 -- Garage System Configuration
--- Toggles: "auto", "jg-advancedgarage", "qs-advancedgarages", "qb-garage", "esx_garage", "standalone"
+-- Toggles: "auto", "void_garages", "jg-advancedgarage", "qs-advancedgarages", "qb-garage", "esx_garage", "standalone"
 Config.Garage = "auto"
 
 -- Utility Library (e.g. ox_lib for progress bars, dialogs, menus, etc.)

@@ -17,7 +17,9 @@ local function DetectEnvironment()
     if Config.Framework ~= "auto" then
         Framework = Config.Framework
     else
-        if GetResourceState('qb-core') == 'started' or GetResourceState('qbx_core') == 'started' then
+        if GetResourceState('qbx_core') == 'started' then
+            Framework = "qbx"
+        elseif GetResourceState('qb-core') == 'started' then
             Framework = "qbcore"
         elseif GetResourceState('es_extended') == 'started' then
             Framework = "esx"
@@ -129,6 +131,35 @@ function Bridge.GetPlayerData()
                 isboss = pData.gang.isboss
             } or nil
         }
+    elseif Framework == "qbx" then
+        local pData = nil
+        if QBX and QBX.PlayerData then
+            pData = QBX.PlayerData
+        elseif exports.qbx_core and exports.qbx_core.GetPlayerData then
+            pData = exports.qbx_core:GetPlayerData()
+        elseif QBCore and QBCore.Functions then
+            pData = QBCore.Functions.GetPlayerData()
+        end
+
+        if not pData then return {} end
+        return {
+            citizenid = pData.citizenid,
+            source = pData.source or GetPlayerServerId(PlayerId()),
+            name = pData.charinfo and (pData.charinfo.firstname .. " " .. pData.charinfo.lastname) or "Player",
+            job = {
+                name = pData.job and pData.job.name or "unemployed",
+                label = pData.job and pData.job.label or "Unemployed",
+                grade = pData.job and pData.job.grade and pData.job.grade.level or 0,
+                gradeLabel = pData.job and pData.job.grade and pData.job.grade.name or "Freelancer"
+            },
+            gang = pData.gang and {
+                name = pData.gang.name,
+                label = pData.gang.label,
+                grade = pData.gang.grade and pData.gang.grade.level or 0,
+                gradeLabel = pData.gang.grade and pData.gang.grade.name or "Recruit",
+                isboss = pData.gang.isboss
+            } or nil
+        }
     elseif Framework == "esx" then
         local pData = ESX.GetPlayerData()
         local jobLabel = pData.job and pData.job.label or "Unemployed"
@@ -172,6 +203,10 @@ function Bridge.Notify(message, type, duration)
         exports['okokNotify']:Alert("System", message, duration, type)
     elseif NotifySystemName == "qbcore" and Framework == "qbcore" then
         QBCore.Functions.Notify(message, type, duration)
+    elseif NotifySystemName == "qbcore" and Framework == "qbx" then
+        pcall(function()
+            exports.qbx_core:Notify(message, type, duration)
+        end)
     elseif NotifySystemName == "esx" and Framework == "esx" then
         ESX.ShowNotification(message, type, duration)
     else
