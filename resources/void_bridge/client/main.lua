@@ -241,7 +241,8 @@ function Bridge.Target.AddBoxZone(id, coords, size, rotation, options)
                 label = opt.label,
                 event = opt.event,
                 onSelect = opt.action,
-                canInteract = opt.canInteract
+                canInteract = opt.canInteract,
+                distance = opt.distance or options.distance
             })
         end
         return exports.ox_target:addBoxZone({
@@ -288,7 +289,8 @@ function Bridge.Target.AddTargetModel(models, options)
                 label = opt.label,
                 event = opt.event,
                 onSelect = opt.action,
-                canInteract = opt.canInteract
+                canInteract = opt.canInteract,
+                distance = opt.distance or options.distance
             })
         end
         exports.ox_target:addModel(models, oxOptions)
@@ -334,7 +336,8 @@ function Bridge.Target.AddTargetEntity(entity, options)
                         return opt.canInteract(ent)
                     end
                     return true
-                end
+                end,
+                distance = opt.distance or distance
             })
         end
         exports.ox_target:addLocalEntity(entity, oxOptions)
