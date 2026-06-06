@@ -11,6 +11,11 @@ local LibSystemName = "none"
 
 local LocalPlayerData = {}
 
+local lastFramework = nil
+local lastTargetSystem = nil
+local lastNotifySystem = nil
+local lastLibSystem = nil
+
 local function IsResourceActive(name)
     local state = GetResourceState(name)
     return state == "started" or state == "starting"
@@ -34,11 +39,15 @@ local function DetectEnvironment()
     end
 
     if Framework == "qbcore" then
-        QBCore = exports['qb-core']:GetCoreObject()
+        if not QBCore then
+            pcall(function() QBCore = exports['qb-core']:GetCoreObject() end)
+        end
     elseif Framework == "esx" then
-        pcall(function() ESX = exports['es_extended']:getSharedObject() end)
         if not ESX then
-            TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
+            pcall(function() ESX = exports['es_extended']:getSharedObject() end)
+            if not ESX then
+                TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
+            end
         end
     end
 
@@ -85,19 +94,31 @@ local function DetectEnvironment()
         end
     end
 
-    if Config.Debug then
-        print("^4================= VOID_BRIDGE ENVIRONMENT (CLIENT) =================^7")
-        print(("^4[void_bridge]^7 Framework: ^2%s^7"):format(Framework))
-        print(("^4[void_bridge]^7 Target: ^2%s^7"):format(TargetSystem))
-        print(("^4[void_bridge]^7 Notification: ^2%s^7"):format(NotifySystemName))
-        print(("^4[void_bridge]^7 Library: ^2%s^7"):format(LibSystemName))
-        print("^4====================================================================^7")
+    -- Log configuration banner only if state changes
+    local changed = (Framework ~= lastFramework) or (TargetSystem ~= lastTargetSystem) or (NotifySystemName ~= lastNotifySystem) or (LibSystemName ~= lastLibSystem)
+    if changed then
+        lastFramework = Framework
+        lastTargetSystem = TargetSystem
+        lastNotifySystem = NotifySystemName
+        lastLibSystem = LibSystemName
+
+        if Config.Debug then
+            print("^4================= VOID_BRIDGE ENVIRONMENT (CLIENT) =================^7")
+            print(("^4[void_bridge]^7 Framework: ^2%s^7"):format(Framework))
+            print(("^4[void_bridge]^7 Target: ^2%s^7"):format(TargetSystem))
+            print(("^4[void_bridge]^7 Notification: ^2%s^7"):format(NotifySystemName))
+            print(("^4[void_bridge]^7 Library: ^2%s^7"):format(LibSystemName))
+            print("^4====================================================================^7")
+        end
     end
 end
 
--- Initialize detection on resource start
-AddEventHandler('onResourceStart', function(resourceName)
-    if GetCurrentResourceName() ~= resourceName then return end
+-- Initialize detection on resource start / dynamically when any resource starts
+AddEventHandler('onClientResourceStart', function(resourceName)
+    DetectEnvironment()
+end)
+
+AddEventHandler('onClientResourceStop', function(resourceName)
     DetectEnvironment()
 end)
 
@@ -599,5 +620,162 @@ RegisterNetEvent('void_bridge:client:dispatchAlert', function(data)
         end
     end)
 end)
+
+-------------------------------------------------------------------------------
+-- VEHICLE PROPERTIES CLIENT API
+-------------------------------------------------------------------------------
+
+function Bridge.GetVehicleProperties(vehicle)
+    if not DoesEntityExist(vehicle) then return {} end
+    if LibSystemName == "ox_lib" then
+        return lib.getVehicleProperties(vehicle)
+    end
+    
+    -- QB-Core / Qbox compatibility fallback
+    if Framework == "qbcore" or Framework == "qbx" then
+        local QBCoreObj = nil
+        if Framework == "qbcore" then
+            QBCoreObj = QBCore
+        else
+            pcall(function() QBCoreObj = exports['qb-core']:GetCoreObject() end)
+        end
+        if QBCoreObj and QBCoreObj.Functions and QBCoreObj.Functions.GetVehicleProperties then
+            return QBCoreObj.Functions.GetVehicleProperties(vehicle)
+        end
+    end
+
+    -- ESX compatibility fallback
+    if Framework == "esx" and ESX then
+        return ESX.Game.GetVehicleProperties(vehicle)
+    end
+
+    -- Standalone native fallback
+    local color1, color2 = GetVehicleColours(vehicle)
+    local pearlescentColor, wheelColor = GetVehicleExtraColours(vehicle)
+    local properties = {
+        model = GetEntityModel(vehicle),
+        plate = GetVehicleNumberPlateText(vehicle),
+        color1 = color1,
+        color2 = color2,
+        pearlescentColor = pearlescentColor,
+        wheelColor = wheelColor,
+        wheels = GetVehicleWheelType(vehicle),
+        windowTint = GetVehicleWindowTint(vehicle),
+        bodyHealth = GetVehicleBodyHealth(vehicle),
+        engineHealth = GetVehicleEngineHealth(vehicle),
+        fuelLevel = GetVehicleFuelLevel(vehicle),
+        mods = {}
+    }
+    SetVehicleModKit(vehicle, 0)
+    for i = 0, 48 do
+        properties.mods[tostring(i)] = GetVehicleMod(vehicle, i)
+    end
+    return properties
+end
+
+function Bridge.SetVehicleProperties(vehicle, props)
+    if not DoesEntityExist(vehicle) or not props then return end
+    if LibSystemName == "ox_lib" then
+        lib.setVehicleProperties(vehicle, props)
+        return
+    end
+
+    -- QB-Core / Qbox compatibility fallback
+    if Framework == "qbcore" or Framework == "qbx" then
+        local QBCoreObj = nil
+        if Framework == "qbcore" then
+            QBCoreObj = QBCore
+        else
+            pcall(function() QBCoreObj = exports['qb-core']:GetCoreObject() end)
+        end
+        if QBCoreObj and QBCoreObj.Functions and QBCoreObj.Functions.SetVehicleProperties then
+            QBCoreObj.Functions.SetVehicleProperties(vehicle, props)
+            return
+        end
+    end
+
+    -- ESX compatibility fallback
+    if Framework == "esx" and ESX then
+        ESX.Game.SetVehicleProperties(vehicle, props)
+        return
+    end
+
+    -- Standalone native fallback
+    SetVehicleModKit(vehicle, 0)
+    if props.color1 and props.color2 then SetVehicleColours(vehicle, props.color1, props.color2) end
+    if props.pearlescentColor and props.wheelColor then SetVehicleExtraColours(vehicle, props.pearlescentColor, props.wheelColor) end
+    if props.wheels then SetVehicleWheelType(vehicle, props.wheels) end
+    if props.windowTint then SetVehicleWindowTint(vehicle, props.windowTint) end
+    if props.bodyHealth then SetVehicleBodyHealth(vehicle, props.bodyHealth + 0.0) end
+    if props.engineHealth then SetVehicleEngineHealth(vehicle, props.engineHealth + 0.0) end
+    if props.fuelLevel then SetVehicleFuelLevel(vehicle, props.fuelLevel + 0.0) end
+    if props.mods then
+        for modId, modVal in pairs(props.mods) do
+            local id = tonumber(modId)
+            if id then
+                if id == 18 then ToggleVehicleMod(vehicle, 18, modVal == 1 or modVal == true)
+                elseif id == 22 then ToggleVehicleMod(vehicle, 22, modVal == 1 or modVal == true)
+                else SetVehicleMod(vehicle, id, tonumber(modVal), false) end
+            end
+        end
+    end
+end
+
+exports('GetVehicleProperties', function(vehicle)
+    return Bridge.GetVehicleProperties(vehicle)
+end)
+
+exports('SetVehicleProperties', function(vehicle, props)
+    Bridge.SetVehicleProperties(vehicle, props)
+end)
+
+-------------------------------------------------------------------------------
+-- VEHICLE KEYS & LOCKS CLIENT API
+-------------------------------------------------------------------------------
+
+function Bridge.GiveVehicleKeys(vehicle, plate)
+    if not plate then plate = GetVehicleNumberPlateText(vehicle) end
+    if not plate then return false end
+    
+    if GetResourceState('void_keys') == 'started' then
+        exports.void_keys:GiveKeys(plate)
+        return true
+    elseif GetResourceState('qb-vehiclekeys') == 'started' then
+        TriggerEvent('vehiclekeys:client:SetOwner', plate)
+        return true
+    elseif GetResourceState('okokGarage') == 'started' then
+        TriggerServerEvent('okokGarage:GiveKeys', plate)
+        return true
+    end
+    return false
+end
+
+function Bridge.LockVehicle(vehicle)
+    if not DoesEntityExist(vehicle) then return end
+    if GetResourceState('okokGarage') == 'started' then
+        pcall(function() exports['okokGarage']:lockvehicle(vehicle) end)
+        return true
+    end
+
+    -- Default fallback (toggle)
+    local lockStatus = GetVehicleDoorLockStatus(vehicle)
+    if lockStatus == 1 or lockStatus == 0 then
+        SetVehicleDoorsLocked(vehicle, 2)
+        Bridge.Notify("Vehicle Locked", "success", 3000)
+    else
+        SetVehicleDoorsLocked(vehicle, 1)
+        Bridge.Notify("Vehicle Unlocked", "success", 3000)
+    end
+    return true
+end
+
+exports('GiveVehicleKeys', function(vehicle, plate)
+    return Bridge.GiveVehicleKeys(vehicle, plate)
+end)
+
+exports('LockVehicle', function(vehicle)
+    return Bridge.LockVehicle(vehicle)
+end)
+
 
 

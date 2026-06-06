@@ -21,6 +21,13 @@ local function IsResourceActive(name)
 end
 
 -- Dynamic Framework and Dependency Auto-Detection
+local lastFramework = nil
+local lastInventory = nil
+local lastNotify = nil
+local lastBanking = nil
+local lastGarage = nil
+local lastDispatch = nil
+
 local function DetectEnvironment()
     -- 1. Detect Core Framework
     if Config.Framework ~= "auto" then
@@ -38,11 +45,15 @@ local function DetectEnvironment()
     end
 
     if Framework == "qbcore" then
-        QBCore = exports['qb-core']:GetCoreObject()
+        if not QBCore then
+            pcall(function() QBCore = exports['qb-core']:GetCoreObject() end)
+        end
     elseif Framework == "esx" then
-        pcall(function() ESX = exports['es_extended']:getSharedObject() end)
         if not ESX then
-            TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
+            pcall(function() ESX = exports['es_extended']:getSharedObject() end)
+            if not ESX then
+                TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
+            end
         end
     end
 
@@ -50,7 +61,9 @@ local function DetectEnvironment()
     if Config.Inventory ~= "auto" then
         InventorySystem = Config.Inventory
     else
-        if IsResourceActive('ox_inventory') then
+        if IsResourceActive('void_inventory') then
+            InventorySystem = "void_inventory"
+        elseif IsResourceActive('ox_inventory') then
             InventorySystem = "ox_inventory"
         elseif IsResourceActive('qb-inventory') or IsResourceActive('qb-core') or IsResourceActive('qbx_core') then
             InventorySystem = "qb-inventory"
@@ -129,15 +142,29 @@ local function DetectEnvironment()
         end
     end
 
-    if Config.Debug then
-        print("^4================= VOID_BRIDGE ENVIRONMENT =================^7")
-        print(("^4[void_bridge]^7 Framework: ^2%s^7"):format(Framework))
-        print(("^4[void_bridge]^7 Inventory: ^2%s^7"):format(InventorySystem))
-        print(("^4[void_bridge]^7 Notification: ^2%s^7"):format(NotifySystemName))
-        print(("^4[void_bridge]^7 Banking: ^2%s^7"):format(BankingSystemName))
-        print(("^4[void_bridge]^7 Garage: ^2%s^7"):format(GarageSystemName))
-        print(("^4[void_bridge]^7 Dispatch: ^2%s^7"):format(DispatchSystemName))
-        print("^4===========================================================^7")
+    -- Log configuration banner only if state changes
+    local changed = (Framework ~= lastFramework) or (InventorySystem ~= lastInventory) or
+                    (NotifySystemName ~= lastNotify) or (BankingSystemName ~= lastBanking) or
+                    (GarageSystemName ~= lastGarage) or (DispatchSystemName ~= lastDispatch)
+    
+    if changed then
+        lastFramework = Framework
+        lastInventory = InventorySystem
+        lastNotify = NotifySystemName
+        lastBanking = BankingSystemName
+        lastGarage = GarageSystemName
+        lastDispatch = DispatchSystemName
+
+        if Config.Debug then
+            print("^4================= VOID_BRIDGE ENVIRONMENT =================^7")
+            print(("^4[void_bridge]^7 Framework: ^2%s^7"):format(Framework))
+            print(("^4[void_bridge]^7 Inventory: ^2%s^7"):format(InventorySystem))
+            print(("^4[void_bridge]^7 Notification: ^2%s^7"):format(NotifySystemName))
+            print(("^4[void_bridge]^7 Banking: ^2%s^7"):format(BankingSystemName))
+            print(("^4[void_bridge]^7 Garage: ^2%s^7"):format(GarageSystemName))
+            print(("^4[void_bridge]^7 Dispatch: ^2%s^7"):format(DispatchSystemName))
+            print("^4===========================================================^7")
+        end
     end
 end
 
@@ -182,9 +209,12 @@ local function CheckVersion()
     end, 'GET')
 end
 
--- Initialize detection on resource start
+-- Initialize detection dynamically when any resource starts or stops
 AddEventHandler('onResourceStart', function(resourceName)
-    if GetCurrentResourceName() ~= resourceName then return end
+    DetectEnvironment()
+end)
+
+AddEventHandler('onResourceStop', function(resourceName)
     DetectEnvironment()
 end)
 
@@ -288,7 +318,9 @@ end
 function Bridge.Inventory.AddItem(source, item, count, metadata)
     source = tonumber(source) or source
     count = tonumber(count) or 1
-    if InventorySystem == "ox_inventory" then
+    if InventorySystem == "void_inventory" then
+        return exports.void_inventory:AddItem(source, item, count, metadata)
+    elseif InventorySystem == "ox_inventory" then
         return exports.ox_inventory:AddItem(source, item, count, metadata)
     elseif InventorySystem == "qb-inventory" then
         if Framework == "qbcore" then
@@ -311,7 +343,9 @@ end
 function Bridge.Inventory.RemoveItem(source, item, count, metadata)
     source = tonumber(source) or source
     count = tonumber(count) or 1
-    if InventorySystem == "ox_inventory" then
+    if InventorySystem == "void_inventory" then
+        return exports.void_inventory:RemoveItem(source, item, count, metadata)
+    elseif InventorySystem == "ox_inventory" then
         return exports.ox_inventory:RemoveItem(source, item, count, metadata)
     elseif InventorySystem == "qb-inventory" then
         if Framework == "qbcore" then
@@ -334,7 +368,9 @@ end
 function Bridge.Inventory.HasItem(source, item, count)
     source = tonumber(source) or source
     count = tonumber(count) or 1
-    if InventorySystem == "ox_inventory" then
+    if InventorySystem == "void_inventory" then
+        return exports.void_inventory:HasItem(source, item, count)
+    elseif InventorySystem == "ox_inventory" then
         local itemCount = exports.ox_inventory:Search(source, 'count', item)
         return itemCount >= count
     elseif InventorySystem == "qb-inventory" then
@@ -787,6 +823,187 @@ end
 
 exports('AlertPolice', function(source, data)
     return Bridge.Dispatch.Alert(source, data)
+end)
+
+-------------------------------------------------------------------------------
+-- SOCIETY BANKING SERVER API
+-------------------------------------------------------------------------------
+
+function Bridge.Banking.AddSocietyMoney(jobName, amount)
+    if not jobName or amount <= 0 then return false end
+
+    -- okokBanking integration
+    if GetResourceState('okokBanking') == 'started' then
+        return exports['okokBanking']:AddMoney(jobName, amount)
+    end
+
+    -- QBox/Qbox compatibility layer management
+    if GetResourceState('qbx_management') == 'started' then
+        exports.qbx_management:AddMoney(jobName, amount)
+        return true
+    end
+
+    -- QB-Core standard management
+    if GetResourceState('qb-management') == 'started' then
+        exports['qb-management']:AddMoney(jobName, amount)
+        return true
+    end
+
+    -- QB-Banking
+    if GetResourceState('qb-banking') == 'started' then
+        exports['qb-banking']:AddMoney(jobName, amount)
+        return true
+    end
+
+    -- Fallback triggers
+    TriggerEvent('qb-bossmenu:server:addAccountMoney', jobName, amount)
+    TriggerEvent('esx_addonaccount:getSharedAccount', 'society_' .. jobName, function(account)
+        if account then account.addMoney(amount) end
+    end)
+    return true
+end
+
+function Bridge.Banking.RemoveSocietyMoney(jobName, amount)
+    if not jobName or amount <= 0 then return false end
+
+    -- okokBanking integration
+    if GetResourceState('okokBanking') == 'started' then
+        return exports['okokBanking']:RemoveMoney(jobName, amount)
+    end
+
+    -- QBox management
+    if GetResourceState('qbx_management') == 'started' then
+        exports.qbx_management:RemoveMoney(jobName, amount)
+        return true
+    end
+
+    -- QB-Core standard management
+    if GetResourceState('qb-management') == 'started' then
+        exports['qb-management']:RemoveMoney(jobName, amount)
+        return true
+    end
+
+    -- QB-Banking
+    if GetResourceState('qb-banking') == 'started' then
+        exports['qb-banking']:RemoveMoney(jobName, amount)
+        return true
+    end
+
+    -- Fallback triggers
+    TriggerEvent('qb-bossmenu:server:removeAccountMoney', jobName, amount)
+    TriggerEvent('esx_addonaccount:getSharedAccount', 'society_' .. jobName, function(account)
+        if account then account.removeMoney(amount) end
+    end)
+    return true
+end
+
+exports('AddSocietyMoney', function(jobName, amount)
+    return Bridge.Banking.AddSocietyMoney(jobName, amount)
+end)
+
+exports('RemoveSocietyMoney', function(jobName, amount)
+    return Bridge.Banking.RemoveSocietyMoney(jobName, amount)
+end)
+
+-------------------------------------------------------------------------------
+-- VEHICLE KEYS & LOCKS SERVER API
+-------------------------------------------------------------------------------
+
+function Bridge.Garage.GiveKeys(source, plate)
+    if not plate then return false end
+    if GetResourceState('void_keys') == 'started' then
+        exports.void_keys:GiveKey(source, plate)
+        return true
+    elseif GetResourceState('qb-vehiclekeys') == 'started' then
+        TriggerClientEvent('vehiclekeys:client:SetOwner', source, plate)
+        return true
+    elseif GetResourceState('okokGarage') == 'started' then
+        TriggerEvent('okokGarage:GiveKeys', plate)
+        return true
+    end
+    return false
+end
+
+function Bridge.Garage.SetVehicleStolen(plate)
+    if not plate then return false end
+    if GetResourceState('okokGarage') == 'started' then
+        TriggerEvent('okokGarage:setVehicleStolen', plate)
+        return true
+    end
+    return false
+end
+
+exports('GiveKeys', function(source, plate)
+    return Bridge.Garage.GiveKeys(source, plate)
+end)
+
+exports('SetVehicleStolen', function(plate)
+    return Bridge.Garage.SetVehicleStolen(plate)
+end)
+
+-------------------------------------------------------------------------------
+-- GANG SYSTEM & ZONE WRAPPERS SERVER API
+-------------------------------------------------------------------------------
+
+function Bridge.GetPlayerGang(source)
+    local player = Bridge.GetPlayer(source)
+    if not player then return nil end
+
+    -- cb-gangsystem integration
+    if GetResourceState('cb-gangsystem') == 'started' then
+        local okGang, playerGangID = pcall(function()
+            return exports['cb-gangsystem']:GetGangID(source)
+        end)
+        if okGang and playerGangID then
+            local gangData = GlobalState["GangData"]
+            if gangData then
+                local gangInfo = gangData[tostring(playerGangID)] or gangData[tonumber(playerGangID)]
+                if gangInfo and gangInfo.tag and gangInfo.tag ~= "" then
+                    return string.lower(gangInfo.tag)
+                end
+            end
+        end
+    end
+
+    -- Framework fallback
+    local pData = player.GetData()
+    if pData.gang and pData.gang.name then
+        return pData.gang.name
+    end
+
+    return nil
+end
+
+function Bridge.GetGangZoneOwner(coords)
+    if not coords then return nil end
+    if GetResourceState('cb-gangsystem') == 'started' then
+        local okZone, zoneID = pcall(function()
+            return exports['cb-gangsystem']:GetGangZoneByCoords(coords.xyz or coords)
+        end)
+        if okZone and zoneID then
+            local okController, controllerID = pcall(function()
+                return exports['cb-gangsystem']:GetGangAtZoneReturnID(zoneID)
+            end)
+            if okController and controllerID then
+                local gangData = GlobalState["GangData"]
+                if gangData then
+                    local gangInfo = gangData[tostring(controllerID)] or gangData[tonumber(controllerID)]
+                    if gangInfo and gangInfo.tag and gangInfo.tag ~= "" then
+                        return string.lower(gangInfo.tag)
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
+
+exports('GetPlayerGang', function(source)
+    return Bridge.GetPlayerGang(source)
+end)
+
+exports('GetGangZoneOwner', function(coords)
+    return Bridge.GetGangZoneOwner(coords)
 end)
 
 -- Export implementation to retrieve the bridge object
