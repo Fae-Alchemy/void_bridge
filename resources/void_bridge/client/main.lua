@@ -135,6 +135,10 @@ end)
 -- PLAYER DATA CLIENT API
 -------------------------------------------------------------------------------
 
+function Bridge.GetFramework()
+    return Framework
+end
+
 -- Get local player info uniformly
 function Bridge.GetPlayerData()
     if Framework == "qbcore" then
@@ -628,7 +632,11 @@ end)
 function Bridge.GetVehicleProperties(vehicle)
     if not DoesEntityExist(vehicle) then return {} end
     if LibSystemName == "ox_lib" then
-        return lib.getVehicleProperties(vehicle)
+        local properties = lib.getVehicleProperties(vehicle)
+        if properties then
+            properties.harness = Entity(vehicle).state.harness
+        end
+        return properties
     end
     
     -- QB-Core / Qbox compatibility fallback
@@ -640,13 +648,21 @@ function Bridge.GetVehicleProperties(vehicle)
             pcall(function() QBCoreObj = exports['qb-core']:GetCoreObject() end)
         end
         if QBCoreObj and QBCoreObj.Functions and QBCoreObj.Functions.GetVehicleProperties then
-            return QBCoreObj.Functions.GetVehicleProperties(vehicle)
+            local properties = QBCoreObj.Functions.GetVehicleProperties(vehicle)
+            if properties then
+                properties.harness = Entity(vehicle).state.harness
+            end
+            return properties
         end
     end
 
     -- ESX compatibility fallback
     if Framework == "esx" and ESX then
-        return ESX.Game.GetVehicleProperties(vehicle)
+        local properties = ESX.Game.GetVehicleProperties(vehicle)
+        if properties then
+            properties.harness = Entity(vehicle).state.harness
+        end
+        return properties
     end
 
     -- Standalone native fallback
@@ -670,11 +686,18 @@ function Bridge.GetVehicleProperties(vehicle)
     for i = 0, 48 do
         properties.mods[tostring(i)] = GetVehicleMod(vehicle, i)
     end
+    properties.harness = Entity(vehicle).state.harness
     return properties
 end
 
 function Bridge.SetVehicleProperties(vehicle, props)
     if not DoesEntityExist(vehicle) or not props then return end
+    
+    -- Apply harness if specified
+    if props.harness ~= nil then
+        TriggerServerEvent('void_smallresources:server:setHarnessState', NetworkGetNetworkIdFromEntity(vehicle), props.harness)
+    end
+
     if LibSystemName == "ox_lib" then
         lib.setVehicleProperties(vehicle, props)
         return
